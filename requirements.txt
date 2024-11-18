@@ -1,0 +1,8 @@
+flask
+requests
+numpy
+sounddevice
+pvporcupine
+scipy
+openai-whisper
+pyttsx3
