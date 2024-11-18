@@ -76,8 +76,34 @@ def callback():
             "details": response.json()
         }), 500
 
+# Diccionario de géneros de TMDB (ID: Nombre)
+GENRES = {
+    28: "action",
+    12: "adventure",
+    16: "animation",
+    35: "comedy",
+    80: "crime",
+    99: "documentary",
+    18: "drama",
+    10751: "family",
+    14: "fantasy",
+    36: "history",
+    27: "horror",
+    10402: "music",
+    9648: "mystery",
+    10749: "romance",
+    878: "science fiction",
+    10770: "tv movie",
+    53: "thriller",
+    10752: "war",
+    37: "western"
+}
+
+# Inversión del diccionario para búsquedas
+GENRES_REVERSE = {v: k for k, v in GENRES.items()}
+
 # Endpoint para obtener la lista de seguimiento del usuario
-@app.route("/get_watchlist")
+@app.route("/get_watchlist", methods=["GET"])
 def get_watchlist():
     session_id = load_session()
     if not session_id:
@@ -87,11 +113,54 @@ def get_watchlist():
     account_url = f"{BASE_URL}/account"
     account_response = requests.get(account_url, params={"api_key": API_KEY, "session_id": session_id})
     if account_response.status_code == 200:
-        account_id = account_response.json()["id"]
+        account_id = account_response.json().get("id")
         watchlist_url = f"{BASE_URL}/account/{account_id}/watchlist/movies"
+        
+        # Recuperar los parámetros de filtrado de la URL
+        vote_count = request.args.get("vote_count", type=int)
+        vote_average = request.args.get("vote_average", type=float)
+        after_year = request.args.get("after_year", type=int)
+        before_year = request.args.get("before_year", type=int)
+        adult = request.args.get("adult", type=bool)
+        language = request.args.get("language", type=str)
+        genre = request.args.get("genre", type=str)  # Palabra clave del género
+        
+        # Realizar la solicitud a la watchlist
         watchlist_response = requests.get(watchlist_url, params={"api_key": API_KEY, "session_id": session_id})
         if watchlist_response.status_code == 200:
-            return jsonify(watchlist_response.json())
+            results = watchlist_response.json().get("results", [])
+            
+            # Filtrar resultados según los parámetros
+            filtered_results = []
+            for movie in results:
+                # Filtrar por vote_count
+                if vote_count and movie.get("vote_count", 0) < vote_count:
+                    continue
+                # Filtrar por vote_average
+                if vote_average and movie.get("vote_average", 0.0) < vote_average:
+                    continue
+                # Filtrar por after_year
+                release_year = int(movie.get("release_date", "0000")[:4]) if movie.get("release_date") else 0
+                if after_year and release_year < after_year:
+                    continue
+                # Filtrar por before_year
+                if before_year and release_year > before_year:
+                    continue
+                # Filtrar por adult
+                if adult is not None and movie.get("adult") != adult:
+                    continue
+                # Filtrar por language
+                if language and movie.get("original_language") != language:
+                    continue
+                # Filtrar por genre
+                if genre:
+                    genre_id = GENRES_REVERSE.get(genre.lower())
+                    if genre_id and genre_id not in movie.get("genre_ids", []):
+                        continue
+                
+                filtered_results.append(movie)
+            
+            return jsonify({"results": filtered_results})
         else:
             return jsonify({
                 "error": "Error al obtener la lista de seguimiento",
@@ -102,6 +171,7 @@ def get_watchlist():
             "error": "Error al obtener los datos del usuario",
             "details": account_response.json()
         }), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
