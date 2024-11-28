@@ -1,4 +1,4 @@
-**Still under development**
+**-------------------------Still under development-------------------------**
 # Film Recommendations
 
 This project aims to provide personalized film recommendations based on voice commands. By leveraging speech-to-text transcription, the application processes user commands and queries a film database to suggest movies that match the user's preferences.
